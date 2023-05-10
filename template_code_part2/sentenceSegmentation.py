@@ -42,11 +42,25 @@ class SentenceSegmentation():
 		Returns
 		-------
 		list
-			A list of strings where each strin is a single sentence
+			A list of strings where each string is a single sentence
 		"""
-
+		# print("punkt")
 		sent_detector = nltk.data.load('tokenizers/punkt/english.pickle')
-		segmentedText = sent_detector.tokenize(text.strip())
+		result=""
+		for x in text:
+			if x==" ":
+				result+=x
+			elif x=='.' or x=='?' or x=='!':
+				result+=" "
+			elif x.isalnum():
+				result+=x
+			else:
+				result+=" "
+		result = " ".join(result.split())
+
+		segmentedText = sent_detector.tokenize(result.strip())
 		#Fill in code here
+		# segmentedText = sent_detector.tokenize(text)
+		
 		
 		return segmentedText

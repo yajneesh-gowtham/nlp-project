@@ -6,10 +6,14 @@ from informationRetrieval import InformationRetrieval
 from evaluation import Evaluation
 from informationRetrievalLSA import InformationRetrievalLSA
 from informationRetrievalWord2Vec import InformationRetrievalWord2Vec
+from informationRetrievalLSAKMeans import InformationRetrievalLSAKMeans
+from informationRetrievalGVSM import InformationRetrievalGVSM
 from sys import version_info
 import argparse
 import json
 import matplotlib.pyplot as plt
+import time
+import sys
 
 # Input compatibility for Python 2 and Python 3
 if version_info.major == 3:
@@ -27,7 +31,6 @@ class SearchEngine:
 
 	def __init__(self, args):
 		self.args = args
-
 		self.tokenizer = Tokenization()
 		self.sentenceSegmenter = SentenceSegmentation()
 		self.inflectionReducer = InflectionReduction()
@@ -35,6 +38,8 @@ class SearchEngine:
 		# self.informationRetriever = InformationRetrieval()
 		# self.informationRetriever = InformationRetrievalLSA()
 		self.informationRetriever = InformationRetrievalWord2Vec()
+		# self.informationRetriever = InformationRetrievalLSAKMeans()
+		# self.informationRetriever = InformationRetrievalGVSM()
 		self.evaluator = Evaluation()
 
 
@@ -155,17 +160,38 @@ class SearchEngine:
 		# Read documents
 		docs_json = json.load(open(args.dataset + "cran_docs.json", 'r'))[:]
 		doc_ids, docs = [item["id"] for item in docs_json], \
-								[item["body"] for item in docs_json]
-		# Process documents
-		processedDocs = self.preprocessDocs(docs)
+								[item["body"] for item in docs_json ]
 
+		# Process documents
+		start = time.time()
+		processedDocs = self.preprocessDocs(docs)
+		# return
 		# Build document index
 		self.informationRetriever.buildIndex(processedDocs, doc_ids)
-		doc_IDs_ordered = self.informationRetriever.rank(processedQueries)
-		return
-		# Read relevance judements
 		qrels = json.load(open(args.dataset + "cran_qrels.json", 'r'))[:]
 
+		components = [100*i for i in range(1,11)]
+		MAPs=[]
+		doc_IDs_ordered = self.informationRetriever.rank(processedQueries)
+			# MAP = 0
+			# for k in range(1,11):
+				# MAP += self.evaluator.meanAveragePrecision(doc_IDs_ordered, query_ids, qrels, k)
+			# MAP=MAP/10
+			# MAPs.append(MAP)
+		# plt.plot(components,MAPs)
+		# plt.savefig("components vs MAP")
+		# return
+
+		# end = time.time()
+		# print("time taken to rank the documents ",(end-start)/60,'mins')
+		# return
+		# Read relevance judements
+		# for x in doc_IDs_ordered:
+			# print(x)
+		# return
+		# for k in range(3,4):
+		# 	precision = self.evaluator.meanPrecision(doc_IDs_ordered, query_ids, qrels, k)
+		# return
 		# Calculate precision, recall, f-score, MAP and nDCG for k = 1 to 10
 		precisions, recalls, fscores, MAPs, nDCGs = [], [], [], [], []
 		for k in range(1, 11):
@@ -197,7 +223,7 @@ class SearchEngine:
 		plt.plot(range(1, 11), MAPs, label="MAP")
 		plt.plot(range(1, 11), nDCGs, label="nDCG")
 		plt.legend()
-		plt.title("Evaluation Metrics - Cranfield Dataset")
+		# plt.title("Evaluation Metrics - Cranfield Dataset")
 		plt.xlabel("k")
 		plt.savefig(args.out_folder + "eval_plot.png")
 
@@ -232,8 +258,12 @@ class SearchEngine:
 
 
 if __name__ == "__main__":
-
+	old_stdout = sys.stdout
+	log_file = open("output.log","a")
+	sys.stdout = log_file
+		
 	# Create an argument parser
+	start = time.time()
 	parser = argparse.ArgumentParser(description='main.py')
 
 	# Tunable parameters as external arguments
@@ -250,7 +280,6 @@ if __name__ == "__main__":
 	
 	# Parse the input arguments
 	args = parser.parse_args()
-
 	# Create an instance of the Search Engine
 	searchEngine = SearchEngine(args)
 
@@ -259,3 +288,8 @@ if __name__ == "__main__":
 		searchEngine.handleCustomQuery()
 	else:
 		searchEngine.evaluateDataset()
+	end = time.time()
+	print("time taken for search engine ",(end-start)/60,'mins')
+	sys.stdout = old_stdout
+	log_file.close()
+

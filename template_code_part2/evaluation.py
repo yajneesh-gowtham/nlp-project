@@ -76,8 +76,12 @@ class Evaluation():
 			for i in range(len(qrels)):
 				if int(qrels[i]["query_num"])==query_ids[idx]:
 					trueDocIds.append(int(qrels[i]["id"]))
+			# x = query_ids[idx]
+			# if(x==5 or x==8 or x==66 or x==131 or x==143 or x==167 or x==184 or x==204 or x==209 or x==211):
+			# 	print(query_ids[idx] , doc_IDs_ordered[idx][:k],trueDocIds)
 			meanPrecision+=self.queryPrecision(doc_IDs_ordered[idx],query_ids[idx],trueDocIds,k)
 		#change qrels
+		
 		meanPrecision = meanPrecision/len(query_ids)
 		return meanPrecision
 

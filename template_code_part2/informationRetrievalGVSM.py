@@ -3,13 +3,13 @@ import numpy
 from util import *
 from scipy.linalg import svd
 from sklearn.decomposition import TruncatedSVD
-import numpy as np
+from nltk.corpus import wordnet as wn
 # Add your import statements here
+from nltk.corpus import wordnet_ic
+from nltk.corpus import genesis
+class InformationRetrievalGVSM():
 
-
-class InformationRetrievalLSA():
     def __init__(self):
-        print("Information retrieval LSA")
         self.index = None
         self.docIDs = None
         self.numDocs = 0
@@ -59,7 +59,8 @@ class InformationRetrievalLSA():
 
         self.index = index
 
-    def rank(self, queries,k):
+    def rank(self, queries):
+        print("ranking started")
         """
         Rank the documents according to relevance for each query
 
@@ -117,40 +118,21 @@ class InformationRetrievalLSA():
             res = math.sqrt(sum(map(lambda i: i * i, word_vectors[id])))
             if res != 0:
                 word_vectors[id] = (numpy.array(word_vectors[id]) / res).tolist()
-        
-        # k = 250
-        orderedNames_docs = [id for id in self.docIDs]
-        orderedNames_queries = [id for id in queries_Ids]
-        dataMatrix_docs = numpy.array([word_vectors[i] for i in orderedNames_docs])
-        dataMatrix_queries = numpy.array([word_vectors[i] for i in orderedNames_queries])
-        orderedNames = orderedNames_docs + orderedNames_queries
-        dataMatrix = numpy.array([word_vectors[i] for  i in orderedNames])
-        U, D, VT = np.linalg.svd(dataMatrix_docs)
-        D = np.diag(D)
-        dataMatrix_docs=U[:,:k]@D[:k,:k]
-        V = VT.T
-        dataMatrix_queries = dataMatrix_queries@V[:,:k]
-        
-        # svd = TruncatedSVD(n_components=200)
-        # svd.fit(dataMatrix)
-        # dataMatrix = svd.transform(dataMatrix)
-        # print(dataMatrix.shape)
-        i=0
-        for id in orderedNames_docs:
-            word_vectors[id] = dataMatrix_docs[i]
-            i=i+1
-        i=0
-        for id in orderedNames_queries:
-            word_vectors[id] = dataMatrix_queries[i]
-            i=i+1
 
+        genesis_ic = wn.ic(genesis, False, 0.0)
+        Sim = [[0 for j in range(len(self.index.keys()))]for i in range(len(self.index.keys()))]
+        for i,x in enumerate(self.index.keys()):
+            for j,y in enumerate(self.index.keys()):
+                print(i,j)
+                try:
+                    syn1 = wn.synsets(x)[0]
+                    syn2 = wn.synsets(y)[0]
+                    Sim[i][j] = syn1.lin_similarity(syn2,genesis_ic)
+                    
+                except:
+                    Sim[i][j] = 0
+        return 
 
-        for id in self.docIDs + queries_Ids:
-            res = math.sqrt(sum(map(lambda i: i * i, word_vectors[id])))
-            if res != 0:
-                word_vectors[id] = (numpy.array(word_vectors[id]) / res).tolist()
-
-        # Rank the documents according to the cosine product
         for queryId in queries_Ids:
             cosine_product = []
             for documentId in self.docIDs:

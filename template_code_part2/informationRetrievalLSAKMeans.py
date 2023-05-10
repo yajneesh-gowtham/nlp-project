@@ -3,16 +3,20 @@ import numpy
 from util import *
 from scipy.linalg import svd
 from sklearn.decomposition import TruncatedSVD
-import numpy as np
+from sklearn.cluster import KMeans
 # Add your import statements here
+import matplotlib.pyplot as plt
+from sklearn.mixture import GaussianMixture
+from sklearn.metrics import silhouette_score
+from sklearn.model_selection import RandomizedSearchCV
+class InformationRetrievalLSAKMeans():
 
 
-class InformationRetrievalLSA():
     def __init__(self):
-        print("Information retrieval LSA")
         self.index = None
         self.docIDs = None
         self.numDocs = 0
+        print("Using LSA KMeans")
 
     def logarithm2(self, frequency):
         return math.log2(1 + frequency)
@@ -59,7 +63,7 @@ class InformationRetrievalLSA():
 
         self.index = index
 
-    def rank(self, queries,k):
+    def rank(self, queries):
         """
         Rank the documents according to relevance for each query
 
@@ -91,15 +95,6 @@ class InformationRetrievalLSA():
                         self.index[word][queryId] = 0
                     self.index[word][queryId] += 1
 
-        # for idx in range(len(queries)):
-        # 	query = queries[idx]
-        # 	queryId = queries_Ids[idx]
-        # 	for sentence in query:
-        # 		for word in sentence:
-        # 			self.index[word][queryId] = self.logarithm2(self.index[word][queryId])
-
-        # Create word_vectors using TF*IDF Values
-
         word_vectors = {key: [] for key in queries_Ids + self.docIDs}
 
         N = self.numDocs
@@ -117,49 +112,47 @@ class InformationRetrievalLSA():
             res = math.sqrt(sum(map(lambda i: i * i, word_vectors[id])))
             if res != 0:
                 word_vectors[id] = (numpy.array(word_vectors[id]) / res).tolist()
-        
-        # k = 250
-        orderedNames_docs = [id for id in self.docIDs]
-        orderedNames_queries = [id for id in queries_Ids]
-        dataMatrix_docs = numpy.array([word_vectors[i] for i in orderedNames_docs])
-        dataMatrix_queries = numpy.array([word_vectors[i] for i in orderedNames_queries])
-        orderedNames = orderedNames_docs + orderedNames_queries
-        dataMatrix = numpy.array([word_vectors[i] for  i in orderedNames])
-        U, D, VT = np.linalg.svd(dataMatrix_docs)
-        D = np.diag(D)
-        dataMatrix_docs=U[:,:k]@D[:k,:k]
-        V = VT.T
-        dataMatrix_queries = dataMatrix_queries@V[:,:k]
-        
-        # svd = TruncatedSVD(n_components=200)
-        # svd.fit(dataMatrix)
-        # dataMatrix = svd.transform(dataMatrix)
+
+        orderedNames = [id for id in word_vectors.keys()]
+        dataMatrix = numpy.array([word_vectors[i] for i in orderedNames])
+        # print(dataMatrix.shape)
+        svd = TruncatedSVD(n_components=300)
+        svd.fit(dataMatrix)
+        dataMatrix = svd.transform(dataMatrix)
         # print(dataMatrix.shape)
         i=0
-        for id in orderedNames_docs:
-            word_vectors[id] = dataMatrix_docs[i]
+        for id in orderedNames:
+            word_vectors[id] = dataMatrix[i]
             i=i+1
-        i=0
-        for id in orderedNames_queries:
-            word_vectors[id] = dataMatrix_queries[i]
-            i=i+1
-
-
-        for id in self.docIDs + queries_Ids:
-            res = math.sqrt(sum(map(lambda i: i * i, word_vectors[id])))
-            if res != 0:
-                word_vectors[id] = (numpy.array(word_vectors[id]) / res).tolist()
-
-        # Rank the documents according to the cosine product
+        
+        X =[]
+        for id in self.docIDs:
+            X.append(word_vectors[id])
+        Y = []
         for queryId in queries_Ids:
-            cosine_product = []
-            for documentId in self.docIDs:
+            Y.append(word_vectors[queryId])
+        
+        kmeans = KMeans()
+        kmeans.fit(X)
+        pred_docs = kmeans.fit_predict(X)
+        pred_queries = kmeans.predict(Y)
+        clusters = {}
+        
+        for id,cluster in zip(self.docIDs,pred_docs):
+            if cluster not in clusters.keys():
+                clusters[cluster]=[id]
+            else:
+                clusters[cluster].append(id)
+        
+        for queryId,cluster in zip(queries_Ids,pred_queries):
+            cosine_product=[]
+            for documentId in clusters[cluster]:
                 product = sum([x * y for x, y in zip(word_vectors[queryId], word_vectors[documentId])])
                 cosine_product.append(product)
             sorted_order = numpy.argsort(-numpy.array(cosine_product))
-            docsOrder = (numpy.array(self.docIDs)[sorted_order]).tolist()
+            docsOrder = (numpy.array(clusters[cluster])[sorted_order]).tolist()
             doc_IDs_ordered.append(docsOrder)
-        # print(doc_IDs_ordered[0])
+        
         return doc_IDs_ordered
 
 

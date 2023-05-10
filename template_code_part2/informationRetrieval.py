@@ -1,7 +1,7 @@
 import math
 import numpy
 from util import *
-
+import enchant
 # Add your import statements here
 
 
@@ -13,6 +13,7 @@ class InformationRetrieval():
 		self.index = None
 		self.docIDs = None
 		self.numDocs = 0
+		print("Information retrieval TF-IDF")
 
 	def logarithm2(self,frequency):
 		return math.log2(1+frequency)
@@ -58,8 +59,7 @@ class InformationRetrieval():
 		# 		for word in sentence:
 		# 			index[word][documentId] = self.logarithm2(index[word][documentId])
 
-
-
+		# print(index)
 		self.index = index
 
 
@@ -94,7 +94,16 @@ class InformationRetrieval():
 					if queryId not in self.index[word].keys():
 						self.index[word][queryId] = 0
 					self.index[word][queryId]+=1
-
+		# d = enchant.Dict("en_US")
+		# words = []
+		# for word in self.index.keys():
+		# 	if d.check(word)==True:
+		# 		continue
+		# 	else:
+		# 		words.append(word)
+		# for word in words:
+		# 	print(word)
+		# return
 
 		# for idx in range(len(queries)):
 		# 	query = queries[idx]
@@ -139,6 +148,7 @@ class InformationRetrieval():
 			sorted_order = numpy.argsort(-numpy.array(cosine_product))
 			docsOrder = (numpy.array(self.docIDs)[sorted_order]).tolist()
 			doc_IDs_ordered.append(docsOrder)
+		
 		return doc_IDs_ordered
 
 
